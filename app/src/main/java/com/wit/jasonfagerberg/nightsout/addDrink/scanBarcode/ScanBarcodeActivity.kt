@@ -1,138 +1,80 @@
 package com.wit.jasonfagerberg.nightsout.addDrink.scanBarcode
 
-import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.hardware.Camera
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.view.Window
-import android.view.WindowManager
-import android.widget.FrameLayout
-import android.widget.ImageView
-import com.wit.jasonfagerberg.nightsout.R
-import com.wit.jasonfagerberg.nightsout.main.MainActivity
 import android.graphics.Bitmap
-import android.os.Handler
 import android.graphics.BitmapFactory
-import android.widget.Toast
-import android.content.ContentValues
-import android.provider.MediaStore
+import android.os.Bundle
 import android.util.Log
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.FirebaseApp
+import android.view.View
+import android.widget.Toast
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
-import java.io.FileNotFoundException
-import java.io.IOException
-import java.io.OutputStream
+import com.otaliastudios.cameraview.CameraListener
+import kotlinx.android.synthetic.main.activity_scan_barcode.*
 
 
-class ScanBarcodeActivity : AppCompatActivity() {
-    private var mCamera: Camera? = null
-    private lateinit var camView: CameraView
+class ScanBarcodeActivity : BaseCameraActivity() {
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        requestWindowFeature(Window.FEATURE_NO_TITLE)
-        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        setContentView(R.layout.activity_scan_barcode)
-
-        val x = findViewById<ImageView>(R.id.scan_barcode_close)
-        x.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra("FRAGMENT_ID", 4)
-            startActivity(intent)
-        }
         super.onCreate(savedInstanceState)
+
+        cameraView.addCameraListener(object : CameraListener() {
+            override fun onPictureTaken(jpeg: ByteArray?) {
+                val bitmap = jpeg?.size?.let { BitmapFactory.decodeByteArray(jpeg, 0, it) }
+                bitmap?.let { runBarcodeScanner(it) }
+                showPreview()
+                imagePreview.setImageBitmap(bitmap)
+            }
+        })
     }
 
-    override fun onResume() {
-        mCamera = getCameraInstance()
-        camView = CameraView(this, mCamera!!)
-        val fl = findViewById<FrameLayout>(R.id.layout_scan_barcode)
-        fl.addView(camView)
-        super.onResume()
+    private fun runBarcodeScanner(bitmap: Bitmap) {
+        //Create a FirebaseVisionImage
+        val image = FirebaseVisionImage.fromBitmap(bitmap)
 
-//        val handler = Handler()
-//        val delay = 1000 //milliseconds
-//
-//        handler.postDelayed(object : Runnable {
-//            override fun run() {
-//                //do something
-//                //takePicture()
-//                //takePicture()
-//                handler.postDelayed(this, delay.toLong())
-//            }
-//        }, delay.toLong())
-        findViewById<FloatingActionButton>(R.id.fab_take_photo).setOnClickListener{
-            takePicture()
-        }
+        //Optional : Define what kind of barcodes you want to scan
+        val options = FirebaseVisionBarcodeDetectorOptions.Builder()
+                .setBarcodeFormats(
+                        //Detect all kind of barcodes
+                        FirebaseVisionBarcode.FORMAT_ALL_FORMATS
+                        //Or specify which kind of barcode you want to detect
+                        /*
+                            FirebaseVisionBarcode.FORMAT_QR_CODE,
+                        FirebaseVisionBarcode.FORMAT_AZTEC
+                         */
+                )
+                .build()
 
+        //Get access to an instance of FirebaseBarcodeDetector
+        val detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options)
 
-    }
+        //Use the detector to detect the labels inside the image
+        detector.detectInImage(image)
+                .addOnSuccessListener {
+                    Log.v("ScanBarcodeActivity", "Success! ${it.size}")
+                    // Task completed successfully
+                    for (firebaseBarcode in it) {
+                        Log.v("ScanBarcodeActivity", "UPC type: ${firebaseBarcode.valueType}")
 
-
-
-    private fun takePicture() { //you can call this every 5 seconds using a timer or whenever you want
-        mCamera!!.takePicture(null, null,
-                Camera.PictureCallback { data, camera ->
-                    val uriTarget = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues())
-
-                    val imageFileOS: OutputStream?
-                    try {
-                        imageFileOS = contentResolver.openOutputStream(uriTarget!!)
-                        imageFileOS!!.write(data)
-                        imageFileOS.flush()
-                        imageFileOS.close()
-
-                        Toast.makeText(this, "Image saved: " + uriTarget.toString(), Toast.LENGTH_LONG).show()
-                    } catch (e: FileNotFoundException) {
-                        e.printStackTrace()
-                    } catch (e: IOException) {
-                        e.printStackTrace()
+                        Toast.makeText(baseContext, "UPC type: ${firebaseBarcode.valueType}", Toast.LENGTH_LONG).show()
                     }
-                    val pic = BitmapFactory.decodeByteArray(data, 0, data.size)
-                    FirebaseApp.initializeApp(this)
-                    val options = FirebaseVisionBarcodeDetectorOptions.Builder()
-                            .setBarcodeFormats(
-                                    FirebaseVisionBarcode.FORMAT_UPC_A,
-                                    FirebaseVisionBarcode.FORMAT_UPC_E)
-                            .build()
-                    val detector = FirebaseVision.getInstance().getVisionBarcodeDetector(options)
-                    val image: FirebaseVisionImage = FirebaseVisionImage.fromBitmap(pic)
-                    detector.detectInImage(image)
-                            .addOnSuccessListener {
-                                // Task succeeded!
-                                for (barcode in it) {
-                                    Log.v("ScanBarcodeActivity", "scan successful")
-                                    // Do something with barcode
-                                }
-                            }
-                            .addOnFailureListener {
-                                Log.v("ScanBarcodeActivity", "scan failed")
-                                // Task failed with an exception
-                            }
-                })
+                }
+                .addOnFailureListener {
+                    // Task failed with an exception
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(baseContext, "Sorry, something went wrong!", Toast.LENGTH_SHORT).show()
+                }
+                .addOnCompleteListener {
+                    progressBar.visibility = View.GONE
+                }
+
     }
 
-    override fun onPause() {
-        mCamera?.release()
-        mCamera = null
-        super.onPause()
+    override fun onClick(v: View?) {
+        progressBar.visibility = View.VISIBLE
+        cameraView.captureSnapshot()
     }
 
-    private fun getCameraInstance(): Camera? {
-        try {
-            return Camera.open()
-        } catch (e: Exception) {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra("FRAGMENT_ID", 4)
-            intent.putExtra("ERROR_MESSAGE", "failed to open camera")
-            startActivity(intent)
-            e.printStackTrace()
-        }
-        return null
-    }
 }
