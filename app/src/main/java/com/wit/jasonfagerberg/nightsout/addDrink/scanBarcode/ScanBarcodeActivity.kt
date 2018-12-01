@@ -3,7 +3,6 @@ package com.wit.jasonfagerberg.nightsout.addDrink.scanBarcode
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -13,6 +12,7 @@ import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOption
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.otaliastudios.cameraview.CameraListener
 import kotlinx.android.synthetic.main.activity_scan_barcode.*
+
 
 class ScanBarcodeActivity : BaseCameraActivity() {
 
