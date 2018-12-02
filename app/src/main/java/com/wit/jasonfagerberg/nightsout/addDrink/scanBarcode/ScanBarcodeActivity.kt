@@ -1,16 +1,20 @@
 package com.wit.jasonfagerberg.nightsout.addDrink.scanBarcode
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ImageButton
 import android.widget.Toast
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.otaliastudios.cameraview.CameraListener
+import com.wit.jasonfagerberg.nightsout.R
+import com.wit.jasonfagerberg.nightsout.main.MainActivity
 import kotlinx.android.synthetic.main.activity_scan_barcode.*
 
 
@@ -28,6 +32,12 @@ class ScanBarcodeActivity : BaseCameraActivity() {
                 imagePreview.setImageBitmap(bitmap)
             }
         })
+
+        findViewById<ImageButton>(R.id.btn_scan_barcode_go_back).setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("FRAGMENT_ID", 4)
+            startActivity(intent)
+        }
     }
 
     private fun runBarcodeScanner(bitmap: Bitmap) {
