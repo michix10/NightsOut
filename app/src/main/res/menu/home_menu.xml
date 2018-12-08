@@ -22,6 +22,12 @@
         app:showAsAction="never"/>
 
     <item
+    android:id="@+id/btn_toolbar_auto_track_time"
+    android:checkable="true"
+    app:showAsAction="never"
+    android:title="@string/auto_update_time"/>
+
+    <item
         android:id="@+id/btn_disclaimer"
         android:title="@string/disclaimer"
         app:showAsAction="never" />
